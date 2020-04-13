@@ -23,6 +23,11 @@ library(lubridate)
 library(chron)
 
 # load santa cruz climate data from NOAA NCEI CDO
+# Station name: SANTA CRUZ, CA US
+# Network:ID GHCND:USC00047916
+# Lat/long: 36.98785, -121.99952 
+# Elevation 21.3 m
+# 1893-01-01 to 2020-04-10
 
 sc_climate_data <- read.csv("2102488.csv")
 
@@ -33,7 +38,9 @@ sc_climate_data <- read.csv("2102488.csv")
 
 sc_data_clean <- sc_climate_data %>% 
   select(DATE,PRCP,TMAX,TMIN) %>% 
-  mutate(date=ymd(.$DATE))
+  mutate(date=ymd(.$DATE)) %>% 
+  filter(year(DATE)>1919) %>% 
+  mutate(year= year(DATE))
 
 
 ```
@@ -57,12 +64,115 @@ sc_rainfall
 ```
 
 
-## Including Plots
+```{r fill gaps, include=FALSE}
 
-You can also embed plots, for example:
+precip_avg <- sc_data_clean %>% 
+  group_by(year(date)) %>% 
+  select(PRCP) %>% 
+  drop_na() %>% 
+  summarize(precip=mean(PRCP))
 
-```{r pressure, echo=FALSE}
+mean(precip_avg$precip)
+#0.0907668 mean daily precipitation of all given values
+  
+
+# fill in NA precip values with daily average over entire data period
+fillrow = which(is.na(sc_data_clean$PRCP))
+sc_data_clean$PRCP[fillrow]=0.0907668
+
+# fill in NA temp values with average of before and after data
+fillrow = which(is.na(sc_data_clean$TMAX))
+fillrow = fillrow[2:length(fillrow)]
+sc_data_clean$TMAX[fillrow]=(sc_data_clean$TMAX[fillrow+1]+sc_data_clean$TMAX[fillrow-1])/2
+
+fillrow = which(is.na(sc_data_clean$TMIN))
+fillrow = fillrow[2:length(fillrow)]
+sc_data_clean$TMIN[fillrow]=(sc_data_clean$TMIN[fillrow+1]+sc_data_clean$TMIN[fillrow-1])/2
+
+
+```
+
+
+```{r aggregate, include=FALSE}
+
+# annual min and max temps
+annualtemp_max <- sc_data_clean %>% 
+  group_by (year) %>%
+  drop_na() %>% 
+  summarize(tmax=max(TMAX)) 
+
+annualtemp_min <- sc_data_clean %>% 
+  group_by (year) %>%
+  drop_na() %>% 
+  summarize(tmin=min(TMIN))
+
+# plots of min and max extremes
+
+extreme_temp <- ggplot(annualtemp_max, aes(x=year, y=tmax))+
+  geom_point(color='firebrick2')+
+  geom_point(data=annualtemp_min, aes(x=year, y=tmin), color='dodgerblue2')
+
+extreme_temp
+
+# annual averages of temp
+annualtemp_maxavg <- sc_data_clean %>% 
+  group_by (year) %>%
+  drop_na() %>% 
+  summarize(tmaxavg=mean(TMAX))
+
+annualtemp_minavg <- sc_data_clean %>% 
+  group_by (year) %>%
+  drop_na() %>% 
+  summarize(tminavg=mean(TMIN))
+
+# plots of average max and average min temps aggregated by year
+
+avg_temp <- ggplot(annualtemp_maxavg, aes(x=year, y=tmaxavg))+
+  geom_point(color='firebrick2')+
+  geom_point(data=annualtemp_minavg, aes(x=year, y=tminavg), color='dodgerblue2')
+
+avg_temp
+
+
+```
+
+
+```{r temp range}
+
+# find daily temperature range, then average per year
+
+range <- sc_data_clean %>% 
+  mutate(range=TMAX-TMIN) %>% 
+  group_by(year) %>% 
+  summarize(range=mean(range))
+
+rangeplot <- ggplot(range, aes(x=year, y=range))+
+  geom_point()
+
+rangeplot
+
+## maybe also consider seasonally
+
+range_seasonal <- range %>% 
+  
+
+
+```
+
+
+Assess whether climate at your location has been changing with trend analysis 
+- using 2 different metrics for averages
+- using 2 different metrics for extremes
+
+
+```{r trends, include=FALSE}
 plot(pressure)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r statistical tests, include=FALSE}
+
+```
+
+
+
