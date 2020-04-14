@@ -40,7 +40,8 @@ sc_data_clean <- sc_climate_data %>%
   select(DATE,PRCP,TMAX,TMIN) %>% 
   mutate(date=ymd(.$DATE)) %>% 
   filter(year(DATE)>1919) %>% 
-  mutate(year= year(DATE))
+  mutate(year= year(DATE)) %>% 
+  mutate(month=month(DATE))
 
 
 ```
@@ -143,6 +144,7 @@ avg_temp
 
 range <- sc_data_clean %>% 
   mutate(range=TMAX-TMIN) %>% 
+  drop_na() %>% 
   group_by(year) %>% 
   summarize(range=mean(range))
 
@@ -153,7 +155,22 @@ rangeplot
 
 ## maybe also consider seasonally
 
-range_seasonal <- range %>% 
+range_seasonal <- sc_data_clean %>% 
+  mutate(season = case_when(between(month,3,5) ~1,
+                            between(month,6,8) ~2,
+                            between(month,9,11) ~3,
+                            TRUE~4)) %>%
+  mutate(range=TMAX-TMIN) %>% 
+  group_by(year,season) %>% 
+  drop_na() %>% 
+  summarize(range=mean(range))
+
+# plot
+
+rangeseasonplot <- ggplot(range_seasonal, aes(x=year, y=range, color=season))+
+  geom_point()
+
+rangeseasonplot 
   
 
 
@@ -166,7 +183,11 @@ Assess whether climate at your location has been changing with trend analysis
 
 
 ```{r trends, include=FALSE}
-plot(pressure)
+
+
+
+
+
 ```
 
 
